@@ -34,6 +34,22 @@ Function DisplayMessage
 }
 
 
+function Get-UriSchemeAndAuthority
+{
+    param(
+        [string]$InputString
+    )
+
+    $Uri = $InputString -as [uri]
+    if($Uri){
+               return  $Uri.Authority
+    } else {
+        throw "Malformed URI"
+    }
+}
+
+
+
 #region Make sure to check for the presence of ArmClient here. If not, then install using choco install
     $chocoInstalled = Test-Path -Path "$env:ProgramData\Chocolatey"
     if (-not $chocoInstalled)
@@ -132,14 +148,39 @@ else
     #Convert the string representation of JSON into PowerShell objects for easy manipulation
     $botserviceinfo = $botserviceinfoJSON | ConvertFrom-Json    
     
-    #Get the endpoint and retrive the short name (without hostname)    		
-    $botserviceendpoint=  $botserviceinfo.properties.endpoint
-    $botserviceendpointname = $botserviceendpoint.split('.')[0]
-    $botserviceendpointshortname = $botserviceendpointname.Substring(($botserviceendpoint.Indexof("//")+2))
-     
+    #Get the endpoint and retrive the web app name (without hostname)    		
+    $botserviceendpoint=  $botserviceinfo.properties.endpoint 
+    $hostedonazure = "false"
+    $hostname= Get-UriSchemeAndAuthority $botserviceendpoint
+    $webappname = ""
 
+    DisplayMessage -Message "Validating if the endpoint is hosted on azure web app" -Level Info
+
+    #validating if the URL of the endpoint is hosted on Azure web app
+    if($hostname.contains("azurewebsites.net"))
+    {
+         $hostedonazure = "true"
+         $webappname = $hostname.split('.')[0]
+    }
+    else
+    {
+        try{
+        #we are doing nslookup since the URL can be custom host name
+            $nslookupname =  resolve-dnsname $hostname -Type NS | Where-Object {$_.Namehost -like '*azurewebsites.net*'} | Select NameHost -ExpandProperty NameHost
+            }
+         catch {}
+
+          if($nslookupname.contains("azurewebsites.net"))
+             {
+         $hostedonazure = "true"
+         $webappname = $nslookupname.split('.')[0]
+             }
+    }
+
+           
+    
      #if the endpoint is hosted on azure web app then get all app settings to retrive the Appid and Password
-     if( $botserviceendpoint.contains("azurewebsites.net"))
+     if( $hostedonazure -eq "true")
      {
                     
         #fetch the Endpoint Info (If only Hosted as Web App (*.Azurewebsites.net))
@@ -148,42 +189,45 @@ else
         $sitesinfo = $siteinfoJSON | ConvertFrom-Json
 
 
-     }
+     
 
      #Here all the sites are looped to get the right site name and its resoure group,
       $sitesinfo.value.GetEnumerator() | foreach {   
        
-       If($_.id.endswith($botserviceendpointshortname))
-		{
+           If($_.id.endswith($webappname))
+		    {
 		 
-		     $siteURL= $_.id + "/config/appsettings/list?api-version=2018-02-01"
+		         $siteURL= $_.id + "/config/appsettings/list?api-version=2018-02-01"
 
             	 
-		}   
+		    }   
 
-	}
+	    }
 
-try{
-    #fetch the endpoint web apps App Settings
-     $endpointinfoJSON = ARMClient.exe POST $siteURL
-    #Convert the string representation of JSON into PowerShell objects for easy manipulation
-     $endpoint = $endpointinfoJSON | ConvertFrom-Json
+    try{
+     DisplayMessage -Message "Getting the Bot Endpoints AppID and Password" -Level Info
 
-
-	 $endpointAppid= $endpoint.properties.MicrosoftAppId
-     $endpointPassword = $endpoint.properties.MicrosoftAppPassword
-     }
-catch {}
+        #fetch the endpoint web apps App Settings
+         $endpointinfoJSON = ARMClient.exe POST $siteURL
+        #Convert the string representation of JSON into PowerShell objects for easy manipulation
+         $endpoint = $endpointinfoJSON | ConvertFrom-Json
 
 
+	     $endpointAppid= $endpoint.properties.MicrosoftAppId
+         $endpointPassword = $endpoint.properties.MicrosoftAppPassword
+         }
+    catch {}
+
+}
 
 
-#endregion Execute detectors for Sites and Asp's
+#endregion 
 
 
 
 #region Now the actual checks for Different Error Codes while calling Messaging endpoint
 
+ DisplayMessage -Message "Validating the endpoint" -Level Info
 
 $statuscode = 200
 $errorstatus = "false"
@@ -274,6 +318,11 @@ if($errorstatus -eq "true")
 else
 {
 
+ if( $hostedonazure -eq "true")
+     {
+
+
+      DisplayMessage -Message "Validating AppID and Password Mismatch between Bot Service and the Bot Endpoint" -Level Info
  #if no Errors found then validate AppID and Password
 
 #validate passwords since AppIDs are same
@@ -286,7 +335,8 @@ else
 
         #fetch bearer token for given AppID refer https://docs.microsoft.com/en-us/azure/bot-service/rest-api/bot-framework-rest-connector-authentication?view=azure-bot-service-3.0 
         $password = [System.Web.HttpUtility]::UrlEncode($endpointPassword) 
-        $postParams = "grant_type=client_credentials&client_id=$endpointAppid&client_secret=$password&scope=808d16bf-311c-4936-a7a0-5dec691d2f5a%2F.default"        
+        #$postParams = "grant_type=client_credentials&client_id=$endpointAppid&client_secret=$password&scope=808d16bf-311c-4936-a7a0-5dec691d2f5a%2F.default"        
+		$postParams = "grant_type=client_credentials&client_id=$endpointAppid&client_secret=$password&scope=$botserviceAppId%2F.default"        
         $headers = New-Object "System.Collections.Generic.Dictionary[[String],[String]]"
         $headers.Add('Host','login.microsoftonline.com')
         $headers.Add('Content-Type','application/x-www-form-urlencoded')
@@ -325,6 +375,8 @@ else
  {
   #Please ask them to sync App Id between the Messaging End Point and Bot Service
   DisplayMessage -Message "Your bot might fail with 401 Authentication error as the AppId between Bot Service and your Web end point do not match. Please refer https://docs.microsoft.com/en-us/azure/bot-service/bot-service-manage-overview?view=azure-bot-service-3.0" -Level Error
+
+ }
 
  }
 
