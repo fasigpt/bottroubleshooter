@@ -4,7 +4,7 @@ param(
 $subscriptionId,
 $botServiceName
 
-) #Pass SubscriptyionId and Bot SericeName (web App Bot or Bot Channel Regitsration Name)
+) #Pass SubscriptionId and BotService Name (web App Bot or Bot Channel Regitsration Name)
 
 
 
