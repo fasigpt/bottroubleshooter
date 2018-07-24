@@ -4,7 +4,7 @@ param(
 $subscriptionId,
 $botServiceName
 
-) #Must be the first statement in the script
+) #Pass SubscriptyionId and Bot SericeName (web App Bot or Bot Channel Regitsration Name)
 
 
 
@@ -221,7 +221,7 @@ else
 }
 
 
-#endregion 
+#endregion Fetch Bot Service and backend endpoint Info
 
 
 
@@ -303,7 +303,7 @@ switch ( $statuscode)
 }
 
 
-#endregion 
+#endregion Now the actual checks for Different Error Codes while calling Messaging endpoint
 
 
 #region Now validate the APPID and Password Between the endpoint and Bot Service
@@ -383,7 +383,7 @@ else
 }
 
 
-#endregion
+#endregion Now validate the APPID and Password Between the endpoint and Bot Service
 
 #region Generate Output Report
 DisplayMessage -Message ("Finished..If there are any errors reported above then fix them and please re run this script to validate other scenarios.") -Level Info
