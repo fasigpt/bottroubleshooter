@@ -25,5 +25,5 @@ Once you run the above command you will be provided two options:
 2. Type 2 if you are have issues with Webchat connectivity 
 
 For option 1, no further inputs are needed.
-For option 2, you will need to provide the bot service name/
+For option 2, you will need to provide the bot service name
 
