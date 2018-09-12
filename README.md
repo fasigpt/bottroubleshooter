@@ -1,6 +1,6 @@
 # bottroubleshooter
 This powershell script can help troubleshoot Bot Service Setup, Configuration and Connectivity issues with webchat.
-You are expected to pass the the subscriptionID and the Name of the BotService. The botservice name can retrieved from Azure Portal under "Bot Services", the name can be either Web App Bot or Bot Channel Registration"
+You are expected to pass the the subscriptionID and the Name of the BotService. The botservice name can be retrieved from Azure Portal under "Bot Services", the name can be either Web App Bot or Bot Channel Registration"
 
 Here are the things this troubleshooter can help you with:
 1. Check if you have neccesary permissions to create a Bot service, will tell you the details of the claims you are missing	
@@ -10,7 +10,8 @@ Here are the things this troubleshooter can help you with:
   b.	Validate REST API endpoint
   c.	Status of endpoint (example if the Web App is in stopped state)
   d.	Endpoint failing with exception
-3.	If the BOT endpoint uses custom host name, the script will still detect if its hosted on Web App and then performs all other checks. 
+  e.	If the BOT endpoint uses custom host name, the script will still detect if its hosted on Web App and then performs all of the above checks. 
+4. If you are using an on-premise solution it will provide you details of what ports you need to open.
 
 How to Use :
 
