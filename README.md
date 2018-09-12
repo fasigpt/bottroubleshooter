@@ -6,8 +6,8 @@ Here are the things this troubleshooter can help you with:
 1. Check if you have neccesary permissions to create a Bot service, will tell you the details of the claims you are missing	
 2. Detects if the endpoint is hosted as Azure Web App and if so it will validate AppID and Password between the customer BOT endpoint and the bot service.
 3.	Validate BOT endpoints availability and check for different status 
-  a.	DNS and Name resolution
-  b.	Validate REST API endpoint
+ <br> a.	DNS and Name resolution
+  <br>b.	Validate REST API endpoint
   c.	Status of endpoint (example if the Web App is in stopped state)
   d.	Endpoint failing with exception
   e.	If the BOT endpoint uses custom host name, the script will still detect if its hosted on Web App and then performs all of the above checks. 
