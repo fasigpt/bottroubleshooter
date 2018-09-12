@@ -1,10 +1,11 @@
 param(
 [parameter(Mandatory=$true)]
 [string]
-$subscriptionId,
-$botServiceName
+$subscriptionId
+#$botServiceName
 
 ) #Pass SubscriptionId and BotService Name (web App Bot or Bot Channel Regitsration Name)
+
 
 
 
@@ -16,7 +17,7 @@ Function DisplayMessage
     $Message,
 
     [parameter(Mandatory=$true)]
-    [ValidateSet("Error","Warning","Info")]
+    [ValidateSet("Error","Warning","Info","Input")]
     $Level
     )
     Process
@@ -30,8 +31,15 @@ Function DisplayMessage
         if($Level -eq "Error"){
         Write-Host -BackgroundColor Red -ForegroundColor White $Message `n
         }
+		if($Level -eq "Input"){
+            Write-Host -BackgroundColor White -ForegroundColor Black $Message `n
+            }
     }
 }
+
+
+
+
 
 
 function Get-UriSchemeAndAuthority
@@ -118,6 +126,245 @@ else
 
 
 
+
+
+Function TroubleshootBotCreationPermissionIssues
+{
+
+     DisplayMessage -Message ("Fetching the loged in Token") -Level Info	
+		 $token = ARMClient.exe token
+		 $tokenjson = $token -replace 'Token copied to clipboard successfully.','' | ConvertFrom-Json
+		 $upn = $tokenjson.upn
+		 $principalid = $tokenjson.oid
+		 
+	DisplayMessage -Message ("Getting all the Role Assignmenets for principalid " + $principalid) -Level Info	
+
+ $roleAssignmentsJSON = ARMClient.exe get /subscriptions/$subscriptionId/providers/Microsoft.Authorization/roleAssignments?'$filter=principalId%20eq%20'+"'"+$principalid+"'"+'&api-version=2017-10-01-preview'	
+		  
+		  $roleAssignments = $roleAssignmentsJSON | ConvertFrom-Json
+			
+		 $roledefinitonsarr = @()
+            $actions= @()
+            $notactions = @()
+
+           if($roleAssignments.value.Count -eq 0)
+           {
+             DisplayMessage -Message ("No role assignments found for the account, the user may be an OWNER of the Account and you have full access") -Level Info	
+             return 
+           }
+		 
+		if($roleAssignments -ne $null)
+		{
+
+            
+            DisplayMessage -Message ("Getting Role Definition IDs") -Level Info
+
+			$roleAssignments.value.GetEnumerator() | foreach {              
+		  
+		  
+		    $temp =  $_.properties.roleDefinitionId + '?api-version=2015-07-01' 
+			
+			 
+			 $roledefinitionjson = ARMClient.exe get $temp 
+			 $roledefinition = $roledefinitionjson | ConvertFrom-Json
+			          
+		     $actions += $roledefinition.properties.permissions.actions
+             $notactions += $roledefinition.properties.permissions.notactions
+			
+			}
+		}
+
+
+        $actioncontributor = "*";
+        $actionbotserviceread= "Microsoft.BotService/botServices/read"
+        $actionbotservicerwrite =  "Microsoft.BotService/botServices/write"
+        $actionbotservicerdelete =  "Microsoft.BotService/botServices/delete"
+        $actionbotserviceconnectionsread =  "Microsoft.BotService/botServices/connections/read"
+        $actionbotserviceconnectionswrite =  "Microsoft.BotService/botServices/connections/write"
+        $actionbotserviceconnectionsdelete =   "Microsoft.BotService/botServices/connections/delete"
+        $actionbotservicechannelsread =  "Microsoft.BotService/botServices/channels/read"
+        $actionbotservicechannelswrite = "Microsoft.BotService/botServices/channels/write"
+        $actionbotservicechannelsdelete = "Microsoft.BotService/botServices/channels/delete"
+        $actionbotserviceoperationsread = "Microsoft.BotService/Operations/read"
+        $actionbotservicelocationsread =  "Microsoft.BotService/locations/operationresults/read"
+
+        $boolactioncontributor = "false"
+        $boolactionbotserviceread = "false"
+        $boolactionbotservicerwrite = "false"
+        $boolactionbotservicerdelete = "false"
+        $boolactionbotserviceconnectionsread = "false"
+        $boolactionbotserviceconnectionswrite = "false"
+        $boolactionbotserviceconnectionsdelete = "false"
+        $boolactionbotservicechannelsread = "false"
+        $boolactionbotservicechannelswrite = "false"
+        $boolactionbotservicechannelsdelete = "false"
+        $boolactionbotserviceoperationsread = "false"
+        $boolactionbotservicelocationsread = "false"
+
+
+
+
+   # $actions -replace " ","`n"
+   # $notactions -replace " ","`n"
+
+		#DisplayMessage -Message ("Actions are.." + $actions) -Level Info	
+       # DisplayMessage -Message ("Not Actions are.." + $notactions) -Level Info	
+       foreach($act in $actions)
+       {
+         
+         
+        If($act -eq $actioncontributor  )
+		{
+		
+             $boolactioncontributor = "true"
+		     DisplayMessage -Message ("you are Admin or Contributor and have all access, but refer this article for all claims that you need to have https://github.com/MicrosoftDocs/azure-docs/blob/master/articles/role-based-access-control/resource-provider-operations.md ") -Level Warning	
+             DisplayMessage -Message("Here are the ""Actions"" that we found for your account `n `n" + $actions) -Level Warning	
+             DisplayMessage -Message("Here are the ""Not Actions"" that we found for your account `n `n" + $notactions) -Level Warning	
+             return
+		 
+		}
+        elseif ($act -eq $actionbotserviceread )
+        {
+             $boolactionbotserviceread = "true"
+            
+        }
+         elseif ($act -eq $actionbotservicerwrite )
+        {
+             $boolactionbotservicerwrite = "true"
+            
+        }
+          elseif ($act -eq $actionbotservicerdelete )
+        {
+             $boolactionbotservicerdelete = "true"
+            
+        }
+        elseif ($act -eq $actionbotserviceconnectionsread )
+        {
+             $boolactionbotserviceconnectionsread = "true"
+            
+        }
+         elseif ($act -eq $actionbotserviceconnectionswrite )
+        {
+             $boolactionbotserviceconnectionswrited = "true"
+            
+        }
+         elseif ($act -eq $actionbotserviceconnectionsdelete )
+        {
+             $boolactionbotserviceconnectionsdelete = "true"
+            
+        }
+         elseif ($act -eq $actionbotservicechannelsread )
+        {
+             $boolactionbotservicechannelsread = "true"
+            
+        }
+        elseif ($act -eq $actionbotservicechannelswrite )
+        {
+             $boolactionbotservicechannelswrite= "true"
+            
+        }
+        elseif ($act -eq $actionbotservicechannelsdelete )
+        {
+             $boolactionbotservicechannelsdelete= "true"
+            
+        }
+         elseif ($act -eq $actionbotserviceoperationsread )
+        {
+             $boolactionbotserviceoperationsread= "true"
+            
+        }
+         elseif ($act -eq $actionbotservicelocationsread )
+        {
+             $boolactionbotservicelocationsread= "true"
+            
+        }
+
+
+       
+
+
+       }
+
+
+
+        if ($boolactioncontributor -eq "false" -and ($boolactionbotserviceread -eq "false" -or $boolactionbotservicerwrite -eq "false" -or $boolactionbotservicerdelete -eq "false" -or $boolactionbotserviceconnectionsread -eq "false" -or $boolactionbotserviceconnectionswrite -eq "false" -or $boolactionbotserviceconnectionsdelete -eq "false" -or $boolactionbotservicechannelsread -eq "false"  -or $boolactionbotservicechannelswrite -eq "false" -or $boolactionbotservicechannelsdelete -eq "false" -or $boolactionbotserviceoperationsread -eq "false" -or $boolactionbotservicelocationsread -eq "false" ))
+        {
+         
+             DisplayMessage -Message ("you are NOT an admin or contributor, please refer this article for all claims that you need to have https://github.com/MicrosoftDocs/azure-docs/blob/master/articles/role-based-access-control/resource-provider-operations.md ") -Level Error	
+             DisplayMessage -Message("Here are the ""Actions"" that we found for your account `n `n" + $actions) -Level Warning	
+             DisplayMessage -Message("Here are the ""Not Actions"" that we found for your account `n `n" + $notactions) -Level Warning
+             DisplayMessage -Message("Here are the claims that may be missing") -Level Error
+             if ( $boolactionbotserviceread -eq "false" )
+             {
+              DisplayMessage -Message($actionbotserviceread) -Level Error
+             }
+              if ( $boolactionbotservicerwrite -eq "false" )
+             {
+              DisplayMessage -Message($actionbotservicerwrite) -Level Error
+             }
+             if ( $boolactionbotservicerdelete -eq "false" )
+             {
+              DisplayMessage -Message($actionbotservicerdelete) -Level Error
+             }
+             if ( $boolactionbotserviceconnectionsread -eq "false" )
+             {
+              DisplayMessage -Message($actionbotserviceconnectionsread) -Level Error
+             }
+             if ( $boolactionbotserviceconnectionswrite -eq "false" )
+             {
+              DisplayMessage -Message($actionbotserviceconnectionswrite) -Level Error
+             }
+             if ( $boolactionbotserviceconnectionsdelete -eq "false" )
+             {
+              DisplayMessage -Message($actionbotserviceconnectionsdelete) -Level Error
+             }
+             if ( $boolactionbotservicechannelsread -eq "false" )
+             {
+              DisplayMessage -Message($actionbotservicechannelsread) -Level Error
+             }
+             if ( $boolactionbotservicechannelswrite -eq "false" )
+             {
+              DisplayMessage -Message($actionbotservicechannelswrite) -Level Error
+             }
+             if ( $boolactionbotservicechannelsdelete -eq "false" )
+             {
+              DisplayMessage -Message($actionbotservicechannelsdelete) -Level Error
+             }
+             if ( $boolactionbotserviceoperationsread -eq "false" )
+             {
+              DisplayMessage -Message($actionbotserviceoperationsread) -Level Error
+             }
+             if ( $boolactionbotservicelocationsread -eq "false" )
+             {
+              DisplayMessage -Message($actionbotservicelocationsread) -Level Error
+             }
+             
+             
+             	
+
+        }
+        else
+        {
+             DisplayMessage -Message ("you may have all the privileges needed to create bot service, please refer https://github.com/MicrosoftDocs/azure-docs/blob/master/articles/role-based-access-control/resource-provider-operations.md ") -Level Error	
+             DisplayMessage -Message("Here are the ""Actions"" that we found for your account `n `n" + $actions) -Level Error	
+             DisplayMessage -Message("Here are the ""Not Actions"" that we found for your account `n `n" + $notactions) -Level Error
+             
+            
+        }
+
+}
+
+Function TroubleshootBotWebChatConnectivity
+{
+
+
+	Param(
+    [String]
+    $botServiceName
+	)
+	
+	
+	
 #region Fetch Bot Service and backend endpoint Info
 
     DisplayMessage -Message "Fetching BotService and Endpoint information..." -Level Info
@@ -125,8 +372,17 @@ else
 	#Fetch botService ResourceGroup and build the botserviceURI and get the AppID of botService
 	$botservicesundersubidJSON = ARMClient.exe get /subscriptions/$subscriptionId/providers/Microsoft.BotService/botServices/?api-version=2017-12-01
 
+    
+
     #Convert the string representation of JSON into PowerShell objects for easy 
 	$botservicesundersubid = $botservicesundersubidJSON | ConvertFrom-Json
+
+
+  if($botservicesundersubid.PsObject.Properties.Value.code -contains 'SubscriptionNotRegistered')
+    {
+       DisplayMessage -Message "Microsoft.BotService is not registered under this namespace or the specifed bot is not found under this subscription" -Level Error
+       return
+    }
 	
 	 $botservicesundersubid.value.GetEnumerator() | foreach {       
 		
@@ -141,6 +397,12 @@ else
 		}
 		
      }
+
+    if ( $botserviceUri -eq $null)
+    {
+        DisplayMessage -Message "No bot Service found with the name provided under this subscription." -Level Error
+        return
+    }
 
 
     #Fetch the Bot Service Info and retrive the endpoint info
@@ -380,13 +642,57 @@ else
 
  }
 
+
 }
 
 
 #endregion Now validate the APPID and Password Between the endpoint and Bot Service
 
 #region Generate Output Report
-DisplayMessage -Message ("Finished..If there are any errors reported above then fix them and please re run this script to validate other scenarios.") -Level Info
+
+if( $hostedonazure -ne "true")
+{
+DisplayMessage -Message("The bot endpoint may not be hosted on azure, please review the article https://docs.microsoft.com/en-us/azure/bot-service/bot-service-resources-bot-framework-faq?view=azure-bot-service-3.0#which-specific-urls-do-i-need-to-whitelist-in-my-corporate-firewall-to-access-bot-framework-services") -Level Warning
+}
+DisplayMessage -Message ("Finished..If there are any errors reported above, then fix them and please re run this script to validate other scenarios.") -Level Info
 #endregion Generate Output Report
+}
+
+
+
+
+DisplayMessage -Message ("Please select the scenario you are troubleshooting") -Level Input
+DisplayMessage -Message ("Type 1 if you are have issues creating BotService") -Level Input
+DisplayMessage -Message ("Type 2 if you are have issues with Webchat connectivity") -Level Input
+$scenario = Read-Host -Prompt 'Enter the Scenario ( 1 or 2)'
+ 
+if ($scenario -eq "2")
+{
+	$botServiceName =	Read-Host -Prompt 'Please provide the bot service name'
+	
+	if ($botServiceName -eq "")
+	{
+	DisplayMessage -Message ("Bot Service Name cannot be null, exiting") -Level Error
+	return
+	}
+	Else
+	{
+	  TroubleshootBotWebChatConnectivity -botServiceName $botServiceName
+	}
+	
+}
+ElseIf ($scenario -eq "1")
+{
+		TroubleshootBotCreationPermissionIssues
+}
+
+
+
+
+
+
+
+
+
 
 return
