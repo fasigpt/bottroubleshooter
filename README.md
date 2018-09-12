@@ -8,9 +8,9 @@ Here are the things this troubleshooter can help you with:
 3.	Validate BOT endpoints availability and check for different status 
  <br> a.	DNS and Name resolution
   <br>b.	Validate REST API endpoint
-  c.	Status of endpoint (example if the Web App is in stopped state)
-  d.	Endpoint failing with exception
-  e.	If the BOT endpoint uses custom host name, the script will still detect if its hosted on Web App and then performs all of the above checks. 
+  <br>c.	Status of endpoint (example if the Web App is in stopped state)
+  <br>d.	Endpoint failing with exception
+  <br>e.	If the BOT endpoint uses custom host name, the script will still detect if its hosted on Web App and then performs all of the above checks. 
 4. If you are using an on-premise solution it will provide you details of what ports you need to open.
 
 How to Use :
