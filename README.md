@@ -12,6 +12,7 @@ Here are the things this troubleshooter can help you with:
   <br>d.	Endpoint failing with exception
   <br>e.	If the BOT endpoint uses custom host name, the script will still detect if its hosted on Web App and then performs all of the above checks. 
 4. If you are using an on-premise solution it will provide you details of what ports you need to open.
+5. If the webchat fails due to incorrect appId, the script detects if the appID is registered properly in Azure AD and recommends the right steps to register the AppID.
 
 How to Use :
 
