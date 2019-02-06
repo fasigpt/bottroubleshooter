@@ -626,6 +626,14 @@ else
           {
           DisplayMessage -Message ("The AppIDs match but Your bot might fail with 401 Authentication error as the password between Bot Service and your Web end point do not match. Please refer https://docs.microsoft.com/en-us/azure/bot-service/bot-service-manage-overview?view=azure-bot-service-3.0") -Level Error   
           }
+	  
+	    if($statuscode -eq 400 )
+          {
+              if($_.ErrorDetails.Message.Contains("Application with identifier '$botserviceAppId' was not found in the directory 'botframework.com'"))
+              {
+                 DisplayMessage -Message ("The AppID is invalid!..Please follow this step to create AppId and that should help fix the issue.Login to Portal - Azure Active Directory- App Registrations (preview)- New Registration.Please makes sure to select the second option 'Accounts in any organizational directory'. The reason is the appId must be available for botframework.com directory.") -Level Error   
+              }
+          }
 
         }
 
