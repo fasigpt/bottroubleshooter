@@ -19,7 +19,7 @@ How to Use :
 You will need the subscriptionID and the Name of the BotService. The botservice name can retrieved from Azure Portal under "Bot Services", the name can be either Web App Bot or Bot Channel Registration".
 
 1.	Download the powershell script “BotTroubleshooter.ps1” from Github.
-2.	Open Powershell console and run the below script as below 
+2.	Open Powershell console , make sure to change the path to the current folder where the script is downloaded and run the below script as below 
            .\BotTroubleshooter.ps1 -subscriptionId <Subscription-ID> 
 
 Once you run the above command you will be provided two options:
