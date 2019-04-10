@@ -114,8 +114,8 @@ function DumpClaims
 
   #Convert to right base 64 format
     $base64 = $bearerToken.Split('.')[1]
-    $mod4 = $base64.Length % 4;
-            if ($mod4 > 0)
+    $mod4 = $base64.Length % 4
+            if ($mod4 -gt 0)
             {
                      
             $tempstr = "=" * (4-$mod4)
@@ -147,7 +147,7 @@ $authenticationResult = $app.AcquireTokenAsync($resourceUri,$clientId,$uri , $pr
 $username = $authenticationResult.UserInfo.DisplayableId
 $bearerToken = $authenticationResult.AccessToken
 #test call to validate if the token is valid for that tenant.
-$test =  ARMCall -URI "https://management.azure.com/subscriptions/$subscriptionId/providers/Microsoft.BotService/botServices/?api-version=2017-12-01" -bearerToken $bearerToken -Verb "get"
+$test =  ARMCall -URI "https://management.azure.com/subscriptions/$subscriptionId/?api-version=2014-04-01" -bearerToken $bearerToken -Verb "get"
 
 return $authenticationResult
 
