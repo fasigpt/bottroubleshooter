@@ -29,4 +29,6 @@ Once you run the above command you will be provided two options:
 For option 1, no further inputs are needed.
 For option 2, you will need to provide the bot service name
 
-** when you run the script you may get powershell error 'BotTroubleshooter.ps1 cannot be loaded and not digitally signed'. Please run 'Set-ExecutionPolicy -Scope Process -ExecutionPolicy Bypass' **
+Common errors you may encounter-
+1. when you run the script you may get powershell error 'BotTroubleshooter.ps1 cannot be loaded and not digitally signed'. Please run 'Set-ExecutionPolicy -Scope Process -ExecutionPolicy Bypass'
+2. When you download the script, the powershell script might be blocked, please unblock the script and dll presetn under ADAl folder. https://stackoverflow.com/questions/34400546/could-not-load-file-or-assembly-operation-is-not-supported-exception-from-hres
