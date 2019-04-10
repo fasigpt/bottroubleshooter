@@ -2,15 +2,13 @@ param(
 [parameter(Mandatory=$true)]
 [string]
 $subscriptionId
-#$botServiceName
-
 ) #Pass SubscriptionId and BotService Name (web App Bot or Bot Channel Regitsration Name)
 
 
 
 
 
-Function DisplayMessage
+Function DisplayMessage2
 {
     Param(
     [String]
@@ -37,8 +35,60 @@ Function DisplayMessage
     }
 }
 
+Function DisplayMessage
+{
+    Param(
+    [String]
+    $Message,
+
+    [parameter(Mandatory=$true)]
+    [ValidateSet("Error","Warning","Info","Input")]
+    $Level
+    )
+    Process
+    {
+        if($Level -eq "Info"){
+            Write-Host  -ForegroundColor Green $Message `n
+            }
+        if($Level -eq "Warning"){
+        Write-Host  -ForegroundColor Yellow $Message `n
+        }
+        if($Level -eq "Error"){
+        Write-Host  -ForegroundColor Red $Message `n
+        }
+		if($Level -eq "Input"){
+            Write-Host  -ForegroundColor Green $Message `n
+            }
+    }
+}
 
 
+#Function to make get/post REST Calls
+Function ARMCall
+{
+
+ Param(
+    [String]
+    $URI,
+    [String]
+    $bearerToken,
+    [String]
+    $Verb
+    )
+
+
+$headers1 = New-Object "System.Collections.Generic.Dictionary[[String],[String]]"
+$headers1.Add("authorization", "Bearer $bearerToken")
+$headers1.Add("Accept", 'application/json')
+$headers = @{
+'authorization' = "Bearer $($bearerToken)"
+}
+
+$json = Invoke-RestMethod -Uri $URI  -Method $Verb -Headers $headers1 
+
+return $json | ConvertTo-Json -Depth 10
+  
+}
 
 
 
@@ -56,92 +106,112 @@ function Get-UriSchemeAndAuthority
     }
 }
 
+function DumpClaims
+{
+    param(
+        [string]$bearerToken
+    )
 
+  #Convert to right base 64 format
+    $base64 = $bearerToken.Split('.')[1]
+    $mod4 = $base64.Length % 4;
+            if ($mod4 > 0)
+            {
+                     
+            $tempstr = "=" * (4-$mod4)
+       
+            }
+            
+      
+$frombase64 = [System.Convert]::FromBase64String($base64+$tempstr)
+return [System.Text.Encoding]::UTF8.GetString($frombase64)
 
-#region Make sure to check for the presence of ArmClient here. If not, then install using choco install
-    $chocoInstalled = Test-Path -Path "$env:ProgramData\Chocolatey"
-    if (-not $chocoInstalled)
-    {
-        DisplayMessage -Message "Installing Chocolatey" -Level Info
-        Set-ExecutionPolicy Bypass -Scope Process -Force; iex ((New-Object System.Net.WebClient).DownloadString('https://chocolatey.org/install.ps1'))
-    }
-    else
-    {
-        #Even if the folder is present, there are times when the directory is empty effectively meaning that choco is not installed. We have to initiate an install in this condition too
-        if((Get-ChildItem "$env:ProgramData\Chocolatey" -Recurse | Measure-Object).Count -lt 20)
-        {
-            #There are less than 20 files in the choco directory so we are assuming that either choco is not installed or is not installed properly.
-            DisplayMessage -Message "Installing Chocolatey. Please ensure that you have launched PowerShell as Administrator" -Level Info
-            Set-ExecutionPolicy Bypass -Scope Process -Force; iex ((New-Object System.Net.WebClient).DownloadString('https://chocolatey.org/install.ps1'))
-        }
-    }
-
-    $armClientInstalled = Test-Path -Path "$env:ProgramData\chocolatey\lib\ARMClient"
-
-    if (-not $armClientInstalled)
-    {
-        DisplayMessage -Message "Installing ARMClient" -Level Info
-        choco install armclient
-    }
-    else
-    {
-        #Even if the folder is present, there are times when the directory is empty effectively meaning that ARMClient is not installed. We have to initiate an install in this condition too
-        if((Get-ChildItem "$env:ProgramData\chocolatey\lib\ARMClient" -Recurse | Measure-Object).Count -lt 5)
-        {
-            #There are less than 5 files in the choco directory so we are assuming that either choco is not installed or is not installed properly.
-            DisplayMessage -Message "Installing ARMClient. Please ensure that you have launched PowerShell as Administrator" -Level Info
-            choco install armclient
-        }
-    }
-
-
-    <#
-    NOTE: Please inspect all the powershell scripts prior to running any of these scripts to ensure safety.
-    This is a community driven script library and uses your credentials to access resources on Azure and will have all the access to your Azure resources that you have.
-    All of these scripts download and execute PowerShell scripts contributed by the community.
-    We know it's safe, but you should verify the security and contents of any script from the internet you are not familiar with.
-    #>
-
-#endregion
-
-
-
-
-#Do any work only if we are able to login into Azure. Ask to login only if the cached login user does not have token for the target subscription else it works as a single sign on
-#armclient clearcache
-
-if(@(ARMClient.exe listcache| Where-Object {$_.Contains($subscriptionId)}).Count -lt 1){
-    ARMClient.exe login >$null
 }
 
-if(@(ARMClient.exe listcache | Where-Object {$_.Contains($subscriptionId)}).Count -lt 1){
-    #Either the login attempt failed or this user does not have access to this subscriptionId. Stop the script
-    DisplayMessage -Message ("Login Failed or You do not have access to subscription : " + $subscriptionId) -Level Error
-    return
+function AuthenticationResult
+{
+    param(
+        [string]$authorityUri,
+        [String]$promptType
+    )
+
+try
+{
+
+$app =  New-Object Microsoft.IdentityModel.Clients.ActiveDirectory.AuthenticationContext($authorityUri, $true, [Microsoft.IdentityModel.Clients.ActiveDirectory.TokenCache]::DefaultShared)
+$app = New-Object Microsoft.IdentityModel.Clients.ActiveDirectory.AuthenticationContext($authorityUri, $true, [Microsoft.IdentityModel.Clients.ActiveDirectory.TokenCache]::DefaultShared)
+$uri = New-Object System.Uri($redirectUri)
+$prompt= [Microsoft.IdentityModel.Clients.ActiveDirectory.PromptBehavior]::$promptType
+$promptParam= New-Object Microsoft.IdentityModel.Clients.ActiveDirectory.PlatformParameters($prompt)
+$authenticationResult = $app.AcquireTokenAsync($resourceUri,$clientId,$uri , $promptParam).GetAwaiter().GetResult()
+$username = $authenticationResult.UserInfo.DisplayableId
+$bearerToken = $authenticationResult.AccessToken
+#test call to validate if the token is valid for that tenant.
+$test =  ARMCall -URI "https://management.azure.com/subscriptions/$subscriptionId/providers/Microsoft.BotService/botServices/?api-version=2017-12-01" -bearerToken $bearerToken -Verb "get"
+
+return $authenticationResult
+
+}
+catch{
+
+if($_.ErrorDetails.Message.Contains("The access token is from the wrong issuer"))
+{
+  
+   $uri = [Regex]::Matches($_.ErrorDetails.Message, '(?<='')(.*?)(?='')') | Select -ExpandProperty Value
+   AuthenticationResult $uri[$uri.Count-1] "Auto"
+
+}
+
+}
+
+}
+
+
+#Load ADAL Library to Authenticate and get bearer token https://docs.microsoft.com/en-us/dotnet/api/overview/azure/activedirectory?view=azure-dotnet 
+Add-Type -Path "ADAL\Microsoft.IdentityModel.Clients.ActiveDirectory.dll"
+
+
+#constants
+$clientId = "1950a258-227b-4e31-a9cf-717495945fc2"
+$resourceUri = "https://management.core.windows.net/"
+$authorityUri = "https://login.microsoftonline.com/common"
+$redirectUri = "urn:ietf:wg:oauth:2.0:oob"
+
+
+# Get an Access Token with MSAL
+
+$authenticationResult = AuthenticationResult $authorityUri "Always"
+$username = $authenticationResult.UserInfo.DisplayableId
+$bearerToken = $authenticationResult.AccessToken
+
+
+if($bearerToken -eq $null){
+  DisplayMessage -Message ("Login failed or you do not have access to subscription : " + $subscriptionId) -Level Error
+  return
+
 }
 else
 {
-    DisplayMessage -Message ("User Logged in") -Level Info
+    DisplayMessage -Message ("User $username Logged in") -Level Info
 }
-
-
-
 
 
 Function TroubleshootBotCreationPermissionIssues
 {
 
-     DisplayMessage -Message ("Fetching the loged in Token") -Level Info	
-		 $token = ARMClient.exe token
-		 $tokenjson = $token -replace 'Token copied to clipboard successfully.','' | ConvertFrom-Json
+     DisplayMessage -Message ("Fetching the logged in token") -Level Info	
+
+         $claims = DumpClaims $bearerToken
+         $tokenjson= $claims  | ConvertFrom-Json
 		 $upn = $tokenjson.upn
 		 $principalid = $tokenjson.oid
 		 
-	DisplayMessage -Message ("Getting all the Role Assignmenets for principalid " + $principalid) -Level Info	
+	DisplayMessage -Message ("Getting all the role assignmenets for principalid " + $principalid) -Level Info	
 
- $roleAssignmentsJSON = ARMClient.exe get /subscriptions/$subscriptionId/providers/Microsoft.Authorization/roleAssignments?'$filter=principalId%20eq%20'+"'"+$principalid+"'"+'&api-version=2017-10-01-preview'	
+ 			  
+ $roleAssignmentsJSON =  ARMCall -URI https://management.azure.com/subscriptions/$subscriptionId/providers/Microsoft.Authorization/roleAssignments?'$filter=principalId%20eq%20'+"'"+$principalid+"'"+'&api-version=2017-10-01-preview' -bearerToken $bearerToken -Verb "get"
 		  
-		  $roleAssignments = $roleAssignmentsJSON | ConvertFrom-Json
+$roleAssignments = $roleAssignmentsJSON | ConvertFrom-Json
 			
 		 $roledefinitonsarr = @()
             $actions= @()
@@ -149,7 +219,7 @@ Function TroubleshootBotCreationPermissionIssues
 
            if($roleAssignments.value.Count -eq 0)
            {
-             DisplayMessage -Message ("No role assignments found for the account, the user may be an OWNER of the Account and you have full access") -Level Info	
+             DisplayMessage -Message ("No role assignments found for the account, the user may be an OWNER of the account and you have full access") -Level Info	
              return 
            }
 		 
@@ -165,7 +235,8 @@ Function TroubleshootBotCreationPermissionIssues
 		    $temp =  $_.properties.roleDefinitionId + '?api-version=2015-07-01' 
 			
 			 
-			 $roledefinitionjson = ARMClient.exe get $temp 
+			
+             $roledefinitionjson = ARMCall -URI "https://management.azure.com/$temp" -bearerToken $bearerToken -Verb "get"
 			 $roledefinition = $roledefinitionjson | ConvertFrom-Json
 			          
 		     $actions += $roledefinition.properties.permissions.actions
@@ -201,14 +272,7 @@ Function TroubleshootBotCreationPermissionIssues
         $boolactionbotserviceoperationsread = "false"
         $boolactionbotservicelocationsread = "false"
 
-
-
-
-   # $actions -replace " ","`n"
-   # $notactions -replace " ","`n"
-
-		#DisplayMessage -Message ("Actions are.." + $actions) -Level Info	
-       # DisplayMessage -Message ("Not Actions are.." + $notactions) -Level Info	
+	
        foreach($act in $actions)
        {
          
@@ -217,7 +281,7 @@ Function TroubleshootBotCreationPermissionIssues
 		{
 		
              $boolactioncontributor = "true"
-		     DisplayMessage -Message ("you are Admin or Contributor and have all access, but refer this article for all claims that you need to have https://github.com/MicrosoftDocs/azure-docs/blob/master/articles/role-based-access-control/resource-provider-operations.md ") -Level Warning	
+		     DisplayMessage -Message ("you are an Admin or Contributor and have all access, please refer this article for all claims that you need to have https://github.com/MicrosoftDocs/azure-docs/blob/master/articles/role-based-access-control/resource-provider-operations.md ") -Level Warning	
              DisplayMessage -Message("Here are the ""Actions"" that we found for your account `n `n" + $actions) -Level Warning	
              DisplayMessage -Message("Here are the ""Not Actions"" that we found for your account `n `n" + $notactions) -Level Warning	
              return
@@ -364,49 +428,44 @@ Function TroubleshootBotWebChatConnectivity
 	)
 	
 	
-	
+
 #region Fetch Bot Service and backend endpoint Info
 
-    DisplayMessage -Message "Fetching BotService and Endpoint information..." -Level Info
-    
-	#Fetch botService ResourceGroup and build the botserviceURI and get the AppID of botService
-	$botservicesundersubidJSON = ARMClient.exe get /subscriptions/$subscriptionId/providers/Microsoft.BotService/botServices/?api-version=2017-12-01
-
+DisplayMessage -Message "Fetching BotService and Endpoint information" -Level Info
     
 
-    #Convert the string representation of JSON into PowerShell objects for easy 
-	$botservicesundersubid = $botservicesundersubidJSON | ConvertFrom-Json
+#Fetch botService ResourceGroup and build the botserviceURI and get the AppID of botService
+$botservicesundersubidJSON =  ARMCall -URI "https://management.azure.com/subscriptions/$subscriptionId/providers/Microsoft.BotService/botServices/?api-version=2017-12-01" -bearerToken $bearerToken -Verb "get"
 
+#Convert Json String to PSObject
+$botservicesundersubid = $botservicesundersubidJSON  | ConvertFrom-Json
 
-  if($botservicesundersubid.PsObject.Properties.Value.code -contains 'SubscriptionNotRegistered')
-    {
-       DisplayMessage -Message "Microsoft.BotService is not registered under this namespace or the specifed bot is not found under this subscription" -Level Error
-       return
-    }
-	
-	 $botservicesundersubid.value.GetEnumerator() | foreach {       
+ 
+	$botservicesundersubid.value.GetEnumerator() | foreach {       
 		
-        #$currSite = $_
-
+        
         If($_.id.endswith("/Microsoft.BotService/botServices/$botServiceName"))
 		{
 		 
+
 		 $botserviceUri = $_.id + "/?api-version=2017-12-01"
-         $botserviceAppId= $_.properties.msaAppId
-		 
+         $botserviceAppId = $_.properties.msaAppId
+     
 		}
+
 		
      }
 
     if ( $botserviceUri -eq $null)
     {
-        DisplayMessage -Message "No bot Service found with the name provided under this subscription." -Level Error
+        DisplayMessage -Message "No BotService found with the name provided under this subscription or Microsoft.BotService namespace is not registered" -Level Error
         return
     }
 
 
     #Fetch the Bot Service Info and retrive the endpoint info
-    $botserviceinfoJSON = ARMClient.exe get $botserviceUri
+    $botserviceinfoJSON = ARMCall -URI "https://management.azure.com$botserviceUri" -bearerToken $bearerToken -Verb "get"
+
     #Convert the string representation of JSON into PowerShell objects for easy manipulation
     $botserviceinfo = $botserviceinfoJSON | ConvertFrom-Json    
     
@@ -446,12 +505,10 @@ Function TroubleshootBotWebChatConnectivity
      {
                     
         #fetch the Endpoint Info (If only Hosted as Web App (*.Azurewebsites.net))
-        $siteinfoJSON = ARMClient.exe get /subscriptions/$subscriptionId/providers/Microsoft.Web/sites/?api-version=2018-02-01
+        $siteinfoJSON = ARMCall -URI "https://management.azure.com/subscriptions/$subscriptionId/providers/Microsoft.Web/sites/?api-version=2018-02-01" -bearerToken $bearerToken -Verb "get"
         #Convert the string representation of JSON into PowerShell objects for easy manipulation
         $sitesinfo = $siteinfoJSON | ConvertFrom-Json
-
-
-     
+            
 
      #Here all the sites are looped to get the right site name and its resoure group,
       $sitesinfo.value.GetEnumerator() | foreach {   
@@ -470,15 +527,20 @@ Function TroubleshootBotWebChatConnectivity
      DisplayMessage -Message "Getting the Bot Endpoints AppID and Password" -Level Info
 
         #fetch the endpoint web apps App Settings
-         $endpointinfoJSON = ARMClient.exe POST $siteURL
+         $endpointinfoJSON = ARMCall -URI "https://management.azure.com$siteURL" -bearerToken $bearerToken -Verb "POST"
+
         #Convert the string representation of JSON into PowerShell objects for easy manipulation
          $endpoint = $endpointinfoJSON | ConvertFrom-Json
 
-
 	     $endpointAppid= $endpoint.properties.MicrosoftAppId
          $endpointPassword = $endpoint.properties.MicrosoftAppPassword
+    
          }
-    catch {}
+    catch {
+    
+    DisplayMessage -Message "$_" -Level Error
+
+    }
 
 }
 
@@ -587,6 +649,7 @@ else
       DisplayMessage -Message "Validating AppID and Password Mismatch between Bot Service and the Bot Endpoint" -Level Info
  #if no Errors found then validate AppID and Password
 
+
 #validate passwords since AppIDs are same
  if($botserviceAppId -eq $endpointAppid)
  {
@@ -596,8 +659,8 @@ else
         {
 
         #fetch bearer token for given AppID refer https://docs.microsoft.com/en-us/azure/bot-service/rest-api/bot-framework-rest-connector-authentication?view=azure-bot-service-3.0 
-        $password = [System.Web.HttpUtility]::UrlEncode($endpointPassword) 
-        #$postParams = "grant_type=client_credentials&client_id=$endpointAppid&client_secret=$password&scope=808d16bf-311c-4936-a7a0-5dec691d2f5a%2F.default"        
+      
+        $password = [System.Web.HttpUtility]::UrlEncode($endpointPassword)               
 		$postParams = "grant_type=client_credentials&client_id=$endpointAppid&client_secret=$password&scope=$botserviceAppId%2F.default"        
         $headers = New-Object "System.Collections.Generic.Dictionary[[String],[String]]"
         $headers.Add('Host','login.microsoftonline.com')
@@ -624,14 +687,14 @@ else
            
          if($statuscode -eq 401 )
           {
-          DisplayMessage -Message ("The AppIDs match but Your bot might fail with 401 Authentication error as the password between Bot Service and your Web end point do not match. Please refer https://docs.microsoft.com/en-us/azure/bot-service/bot-service-manage-overview?view=azure-bot-service-3.0") -Level Error   
+          DisplayMessage -Message ("The AppIDs match, but Your bot might fail with 401 Authentication error as the password between Bot Service and your Web end point do not match. Please refer https://docs.microsoft.com/en-us/azure/bot-service/bot-service-manage-overview?view=azure-bot-service-3.0") -Level Error   
           }
 	  
 	    if($statuscode -eq 400 )
           {
               if($_.ErrorDetails.Message.Contains("Application with identifier '$botserviceAppId' was not found in the directory 'botframework.com'"))
               {
-                 DisplayMessage -Message ("The AppID is invalid!..Please follow this step to create AppId and that should help fix the issue.Login to Portal - Azure Active Directory- App Registrations (preview)- New Registration.Please makes sure to select the second option 'Accounts in any organizational directory'. The reason is the appId must be available for botframework.com directory.") -Level Error   
+                 DisplayMessage -Message ("The AppID is invalid!.Please follow this step to create AppId and that should help fix the issue.Login to Portal - Azure Active Directory- App Registrations (preview)- New Registration.Please makes sure to select the second option 'Accounts in any organizational directory'. The reason is the appId must be available for botframework.com directory.") -Level Error   
               }
           }
 
@@ -643,7 +706,7 @@ else
  }
  else
  {
-  #Please ask them to sync App Id between the Messaging End Point and Bot Service
+  #customer needs to sync App Id between the Messaging End Point and Bot Service
   DisplayMessage -Message "Your bot might fail with 401 Authentication error as the AppId between Bot Service and your Web end point do not match. Please refer https://docs.microsoft.com/en-us/azure/bot-service/bot-service-manage-overview?view=azure-bot-service-3.0" -Level Error
 
  }
@@ -670,8 +733,8 @@ DisplayMessage -Message ("Finished..If there are any errors reported above, then
 
 
 DisplayMessage -Message ("Please select the scenario you are troubleshooting") -Level Input
-DisplayMessage -Message ("Type 1 if you are have issues creating BotService") -Level Input
-DisplayMessage -Message ("Type 2 if you are have issues with Webchat connectivity") -Level Input
+DisplayMessage -Message ("1. Type 1 if you are have issues creating BotService") -Level Input
+DisplayMessage -Message ("2. Type 2 if you are have issues with Webchat connectivity") -Level Input
 $scenario = Read-Host -Prompt 'Enter the Scenario ( 1 or 2)'
  
 if ($scenario -eq "2")
@@ -693,11 +756,6 @@ ElseIf ($scenario -eq "1")
 {
 		TroubleshootBotCreationPermissionIssues
 }
-
-
-
-
-
 
 
 
