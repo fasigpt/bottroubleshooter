@@ -2,11 +2,7 @@ param(
 [parameter(Mandatory=$true)]
 [string]
 $subscriptionId
-) #Pass SubscriptionId and BotService Name (web App Bot or Bot Channel Regitsration Name)
-
-
-
-
+) #Pass SubscriptionId and BotService Name (web App Bot or Bot Channel Registration Name)
 
 Function DisplayMessage2
 {
@@ -120,8 +116,7 @@ function DumpClaims
                      
             $tempstr = "=" * (4-$mod4)
        
-            }
-            
+            }            
       
 $frombase64 = [System.Convert]::FromBase64String($base64+$tempstr)
 return [System.Text.Encoding]::UTF8.GetString($frombase64)
@@ -138,38 +133,37 @@ function AuthenticationResult
 try
 {
 
-$app =  New-Object Microsoft.IdentityModel.Clients.ActiveDirectory.AuthenticationContext($authorityUri, $true, [Microsoft.IdentityModel.Clients.ActiveDirectory.TokenCache]::DefaultShared)
-$app = New-Object Microsoft.IdentityModel.Clients.ActiveDirectory.AuthenticationContext($authorityUri, $true, [Microsoft.IdentityModel.Clients.ActiveDirectory.TokenCache]::DefaultShared)
-$uri = New-Object System.Uri($redirectUri)
-$prompt= [Microsoft.IdentityModel.Clients.ActiveDirectory.PromptBehavior]::$promptType
-$promptParam= New-Object Microsoft.IdentityModel.Clients.ActiveDirectory.PlatformParameters($prompt)
-$authenticationResult = $app.AcquireTokenAsync($resourceUri,$clientId,$uri , $promptParam).GetAwaiter().GetResult()
-$username = $authenticationResult.UserInfo.DisplayableId
-$bearerToken = $authenticationResult.AccessToken
-#test call to validate if the token is valid for that tenant.
-$test =  ARMCall -URI "https://management.azure.com/subscriptions/$subscriptionId/?api-version=2014-04-01" -bearerToken $bearerToken -Verb "get"
+	$app =  New-Object Microsoft.IdentityModel.Clients.ActiveDirectory.AuthenticationContext($authorityUri, $true, [Microsoft.IdentityModel.Clients.ActiveDirectory.TokenCache]::DefaultShared)
+	
+	$app = New-Object Microsoft.IdentityModel.Clients.ActiveDirectory.AuthenticationContext($authorityUri, $true, [Microsoft.IdentityModel.Clients.ActiveDirectory.TokenCache]::DefaultShared)
+	
+	$uri = New-Object System.Uri($redirectUri)
+	$prompt= [Microsoft.IdentityModel.Clients.ActiveDirectory.PromptBehavior]::$promptType
+	$promptParam= New-Object Microsoft.IdentityModel.Clients.ActiveDirectory.PlatformParameters($prompt)
+	$authenticationResult = $app.AcquireTokenAsync($resourceUri,$clientId,$uri , $promptParam).GetAwaiter().GetResult()
+	$username = $authenticationResult.UserInfo.DisplayableId
+	$bearerToken = $authenticationResult.AccessToken
+	
+	#test call to validate if the token is valid for that tenant.
+	$test =  ARMCall -URI "https://management.azure.com/subscriptions/$subscriptionId/?api-version=2014-04-01" -bearerToken $bearerToken -Verb "get"
 
-return $authenticationResult
+	return $authenticationResult
 
 }
 catch{
 
-if($_.ErrorDetails.Message.Contains("The access token is from the wrong issuer"))
-{
-  
-   $uri = [Regex]::Matches($_.ErrorDetails.Message, '(?<='')(.*?)(?='')') | Select -ExpandProperty Value
-   AuthenticationResult $uri[$uri.Count-1] "Auto"
+		if($_.ErrorDetails.Message.Contains("The access token is from the wrong issuer"))
+		{
+		  
+		   $uri = [Regex]::Matches($_.ErrorDetails.Message, '(?<='')(.*?)(?='')') | Select -ExpandProperty Value
+		   AuthenticationResult $uri[$uri.Count-1] "Auto"
 
+		}
+	}
 }
-
-}
-
-}
-
 
 #Load ADAL Library to Authenticate and get bearer token https://docs.microsoft.com/en-us/dotnet/api/overview/azure/activedirectory?view=azure-dotnet 
 Add-Type -Path "ADAL\Microsoft.IdentityModel.Clients.ActiveDirectory.dll"
-
 
 #constants
 $clientId = "1950a258-227b-4e31-a9cf-717495945fc2"
@@ -177,28 +171,22 @@ $resourceUri = "https://management.core.windows.net/"
 $authorityUri = "https://login.microsoftonline.com/common"
 $redirectUri = "urn:ietf:wg:oauth:2.0:oob"
 
-
 # Get an Access Token with MSAL
-
 $authenticationResult = AuthenticationResult $authorityUri "Always"
 $username = $authenticationResult.UserInfo.DisplayableId
 $bearerToken = $authenticationResult.AccessToken
 
-
 if($bearerToken -eq $null){
   DisplayMessage -Message ("Login failed or you do not have access to subscription : " + $subscriptionId) -Level Error
   return
-
 }
 else
 {
     DisplayMessage -Message ("User $username Logged in") -Level Info
 }
 
-
 Function TroubleshootBotCreationPermissionIssues
 {
-
      DisplayMessage -Message ("Fetching the logged in token") -Level Info	
 
          $claims = DumpClaims $bearerToken
@@ -209,9 +197,9 @@ Function TroubleshootBotCreationPermissionIssues
 	DisplayMessage -Message ("Getting all the role assignmenets for principalid " + $principalid) -Level Info	
 
  			  
- $roleAssignmentsJSON =  ARMCall -URI https://management.azure.com/subscriptions/$subscriptionId/providers/Microsoft.Authorization/roleAssignments?'$filter=principalId%20eq%20'+"'"+$principalid+"'"+'&api-version=2017-10-01-preview' -bearerToken $bearerToken -Verb "get"
+	$roleAssignmentsJSON =  ARMCall -URI https://management.azure.com/subscriptions/$subscriptionId/providers/Microsoft.Authorization/roleAssignments?'$filter=principalId%20eq%20'+"'"+$principalid+"'"+'&api-version=2017-10-01-preview' -bearerToken $bearerToken -Verb "get"
 		  
-$roleAssignments = $roleAssignmentsJSON | ConvertFrom-Json
+	$roleAssignments = $roleAssignmentsJSON | ConvertFrom-Json
 			
 		 $roledefinitonsarr = @()
             $actions= @()
@@ -224,23 +212,15 @@ $roleAssignments = $roleAssignmentsJSON | ConvertFrom-Json
            }
 		 
 		if($roleAssignments -ne $null)
-		{
-
-            
+		{            
             DisplayMessage -Message ("Getting Role Definition IDs") -Level Info
-
-			$roleAssignments.value.GetEnumerator() | foreach {              
-		  
-		  
+			$roleAssignments.value.GetEnumerator() | foreach {        	  
 		    $temp =  $_.properties.roleDefinitionId + '?api-version=2015-07-01' 
-			
-			 
-			
-             $roledefinitionjson = ARMCall -URI "https://management.azure.com/$temp" -bearerToken $bearerToken -Verb "get"
-			 $roledefinition = $roledefinitionjson | ConvertFrom-Json
+		    $roledefinitionjson = ARMCall -URI "https://management.azure.com/$temp" -bearerToken $bearerToken -Verb "get"
+			$roledefinition = $roledefinitionjson | ConvertFrom-Json
 			          
-		     $actions += $roledefinition.properties.permissions.actions
-             $notactions += $roledefinition.properties.permissions.notactions
+		    $actions += $roledefinition.properties.permissions.actions
+            $notactions += $roledefinition.properties.permissions.notactions
 			
 			}
 		}
@@ -274,82 +254,60 @@ $roleAssignments = $roleAssignmentsJSON | ConvertFrom-Json
 
 	
        foreach($act in $actions)
-       {
-         
-         
-        If($act -eq $actioncontributor  )
-		{
-		
+       {   
+        If($act -eq $actioncontributor)
+		{		
              $boolactioncontributor = "true"
 		     DisplayMessage -Message ("you are an Admin or Contributor and have all access, please refer this article for all claims that you need to have https://github.com/MicrosoftDocs/azure-docs/blob/master/articles/role-based-access-control/resource-provider-operations.md ") -Level Warning	
              DisplayMessage -Message("Here are the ""Actions"" that we found for your account `n `n" + $actions) -Level Warning	
              DisplayMessage -Message("Here are the ""Not Actions"" that we found for your account `n `n" + $notactions) -Level Warning	
-             return
-		 
+             return		 
 		}
         elseif ($act -eq $actionbotserviceread )
         {
-             $boolactionbotserviceread = "true"
-            
+             $boolactionbotserviceread = "true"            
         }
-         elseif ($act -eq $actionbotservicerwrite )
+        elseif ($act -eq $actionbotservicerwrite )
         {
-             $boolactionbotservicerwrite = "true"
-            
+             $boolactionbotservicerwrite = "true"            
         }
-          elseif ($act -eq $actionbotservicerdelete )
+        elseif ($act -eq $actionbotservicerdelete )
         {
-             $boolactionbotservicerdelete = "true"
-            
+             $boolactionbotservicerdelete = "true"            
         }
         elseif ($act -eq $actionbotserviceconnectionsread )
         {
-             $boolactionbotserviceconnectionsread = "true"
-            
+             $boolactionbotserviceconnectionsread = "true"            
         }
          elseif ($act -eq $actionbotserviceconnectionswrite )
         {
-             $boolactionbotserviceconnectionswrited = "true"
-            
+             $boolactionbotserviceconnectionswrited = "true"            
         }
          elseif ($act -eq $actionbotserviceconnectionsdelete )
         {
-             $boolactionbotserviceconnectionsdelete = "true"
-            
+             $boolactionbotserviceconnectionsdelete = "true"            
         }
          elseif ($act -eq $actionbotservicechannelsread )
         {
-             $boolactionbotservicechannelsread = "true"
-            
+             $boolactionbotservicechannelsread = "true"            
         }
         elseif ($act -eq $actionbotservicechannelswrite )
         {
-             $boolactionbotservicechannelswrite= "true"
-            
+             $boolactionbotservicechannelswrite= "true"            
         }
         elseif ($act -eq $actionbotservicechannelsdelete )
         {
-             $boolactionbotservicechannelsdelete= "true"
-            
+             $boolactionbotservicechannelsdelete= "true"            
         }
          elseif ($act -eq $actionbotserviceoperationsread )
         {
-             $boolactionbotserviceoperationsread= "true"
-            
+             $boolactionbotserviceoperationsread= "true"            
         }
          elseif ($act -eq $actionbotservicelocationsread )
         {
-             $boolactionbotservicelocationsread= "true"
-            
-        }
-
-
-       
-
-
+             $boolactionbotservicelocationsread= "true"            
+        }     
        }
-
-
 
         if ($boolactioncontributor -eq "false" -and ($boolactionbotserviceread -eq "false" -or $boolactionbotservicerwrite -eq "false" -or $boolactionbotservicerdelete -eq "false" -or $boolactionbotserviceconnectionsread -eq "false" -or $boolactionbotserviceconnectionswrite -eq "false" -or $boolactionbotserviceconnectionsdelete -eq "false" -or $boolactionbotservicechannelsread -eq "false"  -or $boolactionbotservicechannelswrite -eq "false" -or $boolactionbotservicechannelsdelete -eq "false" -or $boolactionbotserviceoperationsread -eq "false" -or $boolactionbotservicelocationsread -eq "false" ))
         {
@@ -401,67 +359,49 @@ $roleAssignments = $roleAssignmentsJSON | ConvertFrom-Json
              if ( $boolactionbotservicelocationsread -eq "false" )
              {
               DisplayMessage -Message($actionbotservicelocationsread) -Level Error
-             }
-             
-             
-             	
-
+             }             
         }
         else
         {
              DisplayMessage -Message ("you may have all the privileges needed to create bot service, please refer https://github.com/MicrosoftDocs/azure-docs/blob/master/articles/role-based-access-control/resource-provider-operations.md ") -Level Error	
              DisplayMessage -Message("Here are the ""Actions"" that we found for your account `n `n" + $actions) -Level Error	
-             DisplayMessage -Message("Here are the ""Not Actions"" that we found for your account `n `n" + $notactions) -Level Error
-             
-            
+             DisplayMessage -Message("Here are the ""Not Actions"" that we found for your account `n `n" + $notactions) -Level Error            
         }
 
 }
 
 Function TroubleshootBotWebChatConnectivity
 {
-
-
 	Param(
     [String]
     $botServiceName
 	)
-	
-	
 
 #region Fetch Bot Service and backend endpoint Info
-
-DisplayMessage -Message "Fetching BotService and Endpoint information" -Level Info
-    
+DisplayMessage -Message "Fetching BotService and Endpoint information" -Level Info    
 
 #Fetch botService ResourceGroup and build the botserviceURI and get the AppID of botService
 $botservicesundersubidJSON =  ARMCall -URI "https://management.azure.com/subscriptions/$subscriptionId/providers/Microsoft.BotService/botServices/?api-version=2017-12-01" -bearerToken $bearerToken -Verb "get"
 
 #Convert Json String to PSObject
 $botservicesundersubid = $botservicesundersubidJSON  | ConvertFrom-Json
-
  
-	$botservicesundersubid.value.GetEnumerator() | foreach {       
-		
-        
-        If($_.id.endswith("/Microsoft.BotService/botServices/$botServiceName"))
+	$botservicesundersubid.value.GetEnumerator() | foreach {  
+	   If($_.id.endswith("/Microsoft.BotService/botServices/$botServiceName"))
 		{
 		 
 
 		 $botserviceUri = $_.id + "/?api-version=2017-12-01"
          $botserviceAppId = $_.properties.msaAppId
      
-		}
-
-		
+		}		
      }
 
-    if ( $botserviceUri -eq $null)
+    if($botserviceUri -eq $null)
     {
         DisplayMessage -Message "No BotService found with the name provided under this subscription or Microsoft.BotService namespace is not registered" -Level Error
         return
     }
-
 
     #Fetch the Bot Service Info and retrive the endpoint info
     $botserviceinfoJSON = ARMCall -URI "https://management.azure.com$botserviceUri" -bearerToken $bearerToken -Verb "get"
@@ -497,13 +437,11 @@ $botservicesundersubid = $botservicesundersubidJSON  | ConvertFrom-Json
          $webappname = $nslookupname.split('.')[0]
              }
     }
-
-           
+        
     
      #if the endpoint is hosted on azure web app then get all app settings to retrive the Appid and Password
      if( $hostedonazure -eq "true")
-     {
-                    
+     {                    
         #fetch the Endpoint Info (If only Hosted as Web App (*.Azurewebsites.net))
         $siteinfoJSON = ARMCall -URI "https://management.azure.com/subscriptions/$subscriptionId/providers/Microsoft.Web/sites/?api-version=2018-02-01" -bearerToken $bearerToken -Verb "get"
         #Convert the string representation of JSON into PowerShell objects for easy manipulation
@@ -511,16 +449,13 @@ $botservicesundersubid = $botservicesundersubidJSON  | ConvertFrom-Json
             
 
      #Here all the sites are looped to get the right site name and its resoure group,
-      $sitesinfo.value.GetEnumerator() | foreach {   
-       
+      $sitesinfo.value.GetEnumerator() | foreach {  
+      
            If($_.id.endswith($webappname))
 		    {
 		 
-		         $siteURL= $_.id + "/config/appsettings/list?api-version=2018-02-01"
-
-            	 
+		         $siteURL= $_.id + "/config/appsettings/list?api-version=2018-02-01"            	 
 		    }   
-
 	    }
 
     try{
@@ -536,22 +471,18 @@ $botservicesundersubid = $botservicesundersubidJSON  | ConvertFrom-Json
          $endpointPassword = $endpoint.properties.MicrosoftAppPassword
     
          }
-    catch {
-    
-    DisplayMessage -Message "$_" -Level Error
-
+    catch 
+	{    
+		DisplayMessage -Message "$_" -Level Error
     }
-
 }
 
 
 #endregion Fetch Bot Service and backend endpoint Info
 
-
-
 #region Now the actual checks for Different Error Codes while calling Messaging endpoint
 
- DisplayMessage -Message "Validating the endpoint" -Level Info
+DisplayMessage -Message "Validating the endpoint" -Level Info
 
 $statuscode = 200
 $errorstatus = "false"
@@ -595,35 +526,28 @@ switch ( $statuscode)
  }
 
  404
-
  {
     $errorstatus = "true"
     $Message = "The hostName of the messaging endpoint ($botserviceendpoint) seems to be okay but the endpoint you have configured may be incorrect. validate if you are refering to right controller ex /api/messages"
  }
 
  403
-
  {
     $errorstatus = "true"
     $Message = "The messaging endpoint ($botserviceendpoint) seems to be not responding or in STOPPED state"
  }
 
  503
-
  {
     $errorstatus = "true"
     $Message = "The messaging endpoint ($botserviceendpoint) seems to be not responding or in STOPPED state"
  }
 
  500
-
  {
     $errorstatus = "true"
     $Message = "The messaging endpoint ($botserviceendpoint) seems to be failing with exception. Please review the exception call stack"
  }
-
-
-
 }
 
 
@@ -641,21 +565,17 @@ if($errorstatus -eq "true")
 }
 else
 {
-
  if( $hostedonazure -eq "true")
-     {
-
-
+     {	 
       DisplayMessage -Message "Validating AppID and Password Mismatch between Bot Service and the Bot Endpoint" -Level Info
- #if no Errors found then validate AppID and Password
-
+#if no Errors found then validate AppID and Password
 
 #validate passwords since AppIDs are same
  if($botserviceAppId -eq $endpointAppid)
  {
    #Since the AppIds match, validate the password.
 
-         try
+        try
         {
 
         #fetch bearer token for given AppID refer https://docs.microsoft.com/en-us/azure/bot-service/rest-api/bot-framework-rest-connector-authentication?view=azure-bot-service-3.0 
@@ -668,7 +588,6 @@ else
         $responsejson = Invoke-WebRequest -Uri https://login.microsoftonline.com/botframework.com/oauth2/v2.0/token -Method POST -Body $postParams -Headers $headers
         $response  = $responsejson | ConvertFrom-Json
 
-
         #Now call the actual endpoint to validate if it returned 401 or 200
         $postParams = "{'type': 'message'}"
         $headers2 = New-Object "System.Collections.Generic.Dictionary[[String],[String]]"
@@ -677,12 +596,10 @@ else
         $responsejson = Invoke-WebRequest -Uri $botserviceendpoint -Method POST -Body $postParams -Headers $headers2
         $response  = $responsejson | ConvertFrom-Json
         $response
-
         }
 
         catch
-        {
- 
+        { 
          $statuscode = $_.Exception.Response.StatusCode.value__
            
          if($statuscode -eq 401 )
@@ -699,10 +616,6 @@ else
           }
 
         }
-
-  
-
-
  }
  else
  {
@@ -712,10 +625,7 @@ else
  }
 
  }
-
-
 }
-
 
 #endregion Now validate the APPID and Password Between the endpoint and Bot Service
 
@@ -728,9 +638,6 @@ DisplayMessage -Message("The bot endpoint may not be hosted on azure, please rev
 DisplayMessage -Message ("Finished..If there are any errors reported above, then fix them and please re run this script to validate other scenarios.") -Level Info
 #endregion Generate Output Report
 }
-
-
-
 
 DisplayMessage -Message ("Please select the scenario you are troubleshooting") -Level Input
 DisplayMessage -Message ("1. Type 1 if you are have issues creating BotService") -Level Input
@@ -756,9 +663,5 @@ ElseIf ($scenario -eq "1")
 {
 		TroubleshootBotCreationPermissionIssues
 }
-
-
-
-
 
 return
