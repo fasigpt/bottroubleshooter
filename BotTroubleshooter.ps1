@@ -70,7 +70,7 @@ Function ARMCall {
     $headers1.Add("Accept", 'application/json')
     $headers = @{
         'authorization' = "Bearer $($bearerToken)"
-    }
+	}
 
     $json = Invoke-RestMethod -Uri $URI  -Method $Verb -Headers $headers1 
 
@@ -105,7 +105,6 @@ function DumpClaims {
       
     $frombase64 = [System.Convert]::FromBase64String($base64 + $tempstr)
     return [System.Text.Encoding]::UTF8.GetString($frombase64)
-
 }
 
 function AuthenticationResult {
@@ -136,7 +135,6 @@ function AuthenticationResult {
 		  
             $uri = [Regex]::Matches($_.ErrorDetails.Message, '(?<='')(.*?)(?='')') | Select -ExpandProperty Value
             AuthenticationResult $uri[$uri.Count - 1] "Auto"
-
         }
     }
 }
