@@ -2,7 +2,7 @@ param(
     [parameter(Mandatory = $true)]
     [string]
     $subscriptionId
-) #Pass SubscriptionId and BotService Name (web App Bot or Bot Channel Registration Name)
+) #Pass SubscriptionId and BotService Name (Web App Bot or Bot Channel Registration Name)
 
 Function DisplayMessage2 {
     Param(
@@ -154,7 +154,7 @@ $username = $authenticationResult.UserInfo.DisplayableId
 $bearerToken = $authenticationResult.AccessToken
 
 if ($bearerToken -eq $null) {
-    DisplayMessage -Message ("Login failed or you do not have access to subscription : " + $subscriptionId) -Level Error
+    DisplayMessage -Message ("Login failed or you do not have access to the subscription : " + $subscriptionId) -Level Error
     return
    }
 else {
@@ -169,7 +169,7 @@ Function TroubleshootBotCreationPermissionIssues {
     $upn = $tokenjson.upn
     $principalid = $tokenjson.oid
 		 
-    DisplayMessage -Message ("Getting all the role assignmenets for principalid " + $principalid) -Level Info	
+    DisplayMessage -Message ("Getting all the role assignments for principalid " + $principalid) -Level Info	
  			  
     $roleAssignmentsJSON = ARMCall -URI https://management.azure.com/subscriptions/$subscriptionId/providers/Microsoft.Authorization/roleAssignments?'$filter=principalId%20eq%20'+"'"+$principalid+"'"+'&api-version=2017-10-01-preview' -bearerToken $bearerToken -Verb "get"		  
     $roleAssignments = $roleAssignmentsJSON | ConvertFrom-Json			
@@ -184,7 +184,7 @@ Function TroubleshootBotCreationPermissionIssues {
 		 
     if ($roleAssignments -ne $null) {     
 
-        DisplayMessage -Message ("Getting Role Definition IDs") -Level Info
+        DisplayMessage -Message ("Getting Role Definition ID's") -Level Info
         $roleAssignments.value.GetEnumerator() | foreach {        	  
             $temp = $_.properties.roleDefinitionId + '?api-version=2015-07-01' 
             $roledefinitionjson = ARMCall -URI "https://management.azure.com/$temp" -bearerToken $bearerToken -Verb "get"
@@ -224,7 +224,7 @@ Function TroubleshootBotCreationPermissionIssues {
          
         If ($act -eq $actioncontributor) {		
             $boolactioncontributor = "true"
-            DisplayMessage -Message ("you are an Admin or Contributor and have all access, please refer this article for all claims that you need to have https://github.com/MicrosoftDocs/azure-docs/blob/master/articles/role-based-access-control/resource-provider-operations.md ") -Level Warning	
+            DisplayMessage -Message ("You are an Admin or Contributor and have all access, please refer this article for all claims that you need to have https://github.com/MicrosoftDocs/azure-docs/blob/master/articles/role-based-access-control/resource-provider-operations.md ") -Level Warning	
             DisplayMessage -Message("Here are the ""Actions"" that we found for your account `n `n" + $actions) -Level Warning	
             DisplayMessage -Message("Here are the ""Not Actions"" that we found for your account `n `n" + $notactions) -Level Warning	
             return		 
@@ -266,7 +266,7 @@ Function TroubleshootBotCreationPermissionIssues {
 
     if ($boolactioncontributor -eq "false" -and ($boolactionbotserviceread -eq "false" -or $boolactionbotservicerwrite -eq "false" -or $boolactionbotservicerdelete -eq "false" -or $boolactionbotserviceconnectionsread -eq "false" -or $boolactionbotserviceconnectionswrite -eq "false" -or $boolactionbotserviceconnectionsdelete -eq "false" -or $boolactionbotservicechannelsread -eq "false" -or $boolactionbotservicechannelswrite -eq "false" -or $boolactionbotservicechannelsdelete -eq "false" -or $boolactionbotserviceoperationsread -eq "false" -or $boolactionbotservicelocationsread -eq "false" )) {         
         
-        DisplayMessage -Message ("you are not an admin or contributor, please refer this article for all claims that you need to have https://github.com/MicrosoftDocs/azure-docs/blob/master/articles/role-based-access-control/resource-provider-operations.md ") -Level Error	
+        DisplayMessage -Message ("You are not an admin or contributor, please refer this article for all claims that you need to have https://github.com/MicrosoftDocs/azure-docs/blob/master/articles/role-based-access-control/resource-provider-operations.md ") -Level Error	
         DisplayMessage -Message("Here are the ""Actions"" that we found for your account `n `n" + $actions) -Level Warning	
         DisplayMessage -Message("Here are the ""Not Actions"" that we found for your account `n `n" + $notactions) -Level Warning
         DisplayMessage -Message("Here are the claims that may be missing") -Level Error
@@ -306,7 +306,7 @@ Function TroubleshootBotCreationPermissionIssues {
         }             
     }
     else {
-        DisplayMessage -Message ("you may have all the privileges needed to create bot service, please refer https://github.com/MicrosoftDocs/azure-docs/blob/master/articles/role-based-access-control/resource-provider-operations.md ") -Level Error	
+        DisplayMessage -Message ("You might not have all the privileges needed to create Bot Service, please refer https://github.com/MicrosoftDocs/azure-docs/blob/master/articles/role-based-access-control/resource-provider-operations.md ") -Level Error	
         DisplayMessage -Message("Here are the ""Actions"" that we found for your account `n `n" + $actions) -Level Error	
         DisplayMessage -Message("Here are the ""Not Actions"" that we found for your account `n `n" + $notactions) -Level Error            
     }
@@ -336,11 +336,11 @@ Function TroubleshootBotWebChatConnectivity {
     }
 
     if ($botserviceUri -eq $null) {
-        DisplayMessage -Message "No BotService found with the name provided under this subscription or Microsoft.BotService namespace is not registered" -Level Error
+        DisplayMessage -Message "No Bot Service found with the name provided under this subscription or Microsoft.BotService namespace is not registered" -Level Error
         return
     }
 
-    #Fetch the Bot Service Info and retrive the endpoint info
+    #Fetch the Bot Service Info and retrieve the endpoint info
     $botserviceinfoJSON = ARMCall -URI "https://management.azure.com$botserviceUri" -bearerToken $bearerToken -Verb "get"
 
     #Convert the string representation of JSON into PowerShell objects for easy manipulation
@@ -352,7 +352,7 @@ Function TroubleshootBotWebChatConnectivity {
     $hostname = Get-UriSchemeAndAuthority $botserviceendpoint
     $webappname = ""
 
-    DisplayMessage -Message "Validating if the endpoint is hosted on azure web app" -Level Info
+    DisplayMessage -Message "Validating if the endpoint is hosted on Azure Web App" -Level Info
 
     #validating if the URL of the endpoint is hosted on Azure web app
     if ($hostname.contains("azurewebsites.net")) {
@@ -434,7 +434,7 @@ Function TroubleshootBotWebChatConnectivity {
     
         502 {
             $errorstatus = "true"
-            $Message = "Name resolution of the messaging endpoint ($botserviceendpoint) failed ( DNS resolution Failed). Please validate the messaging endpoint and re configure it."
+            $Message = "Name resolution of the messaging endpoint ($botserviceendpoint) failed ( DNS resolution Failed). Please validate the messaging endpoint and reconfigure it."
         }
 	
         405 {
@@ -444,12 +444,12 @@ Function TroubleshootBotWebChatConnectivity {
 
         200 {
             $errorstatus = "true"
-            $Message = "The hostName of the messaging endpoint ($botserviceendpoint) seems to be okay but the endpoint you have configured may be incorrect. validate if you are refering to right controller ex /api/messages"
+            $Message = "The hostname of the messaging endpoint ($botserviceendpoint) seems to be okay, but the endpoint you have configured may be incorrect. Validate if you are refering to right controller example /api/messages"
         }
 
         404 {
             $errorstatus = "true"
-            $Message = "The hostName of the messaging endpoint ($botserviceendpoint) seems to be okay but the endpoint you have configured may be incorrect. validate if you are refering to right controller ex /api/messages"
+            $Message = "The hostname of the messaging endpoint ($botserviceendpoint) seems to be okay, but the endpoint you have configured may be incorrect. Validate if you are refering to right controller example /api/messages"
         }
 
         403 {
@@ -479,7 +479,7 @@ Function TroubleshootBotWebChatConnectivity {
     else {
         if ($hostedonazure -eq "true") {	 
 
-            DisplayMessage -Message "Validating AppID and Password Mismatch between Bot Service and the Bot Endpoint" -Level Info
+            DisplayMessage -Message "Validating AppID and Password mismatch between Bot Service and the Bot Endpoint" -Level Info
             #if no Errors found then validate AppID and Password
 
             #validate passwords since AppIDs are same
@@ -511,12 +511,12 @@ Function TroubleshootBotWebChatConnectivity {
                     $statuscode = $_.Exception.Response.StatusCode.value__
            
                     if ($statuscode -eq 401 ) {
-                        DisplayMessage -Message ("The AppIDs match, but Your bot might fail with 401 Authentication error as the password between Bot Service and your Web end point do not match. Please refer https://docs.microsoft.com/en-us/azure/bot-service/bot-service-manage-overview?view=azure-bot-service-3.0") -Level Error   
+                        DisplayMessage -Message ("The AppID's match, but your Bot might fail with 401 authentication error as the password between Bot Service and your Web end point do not match. Please refer https://docs.microsoft.com/en-us/azure/bot-service/bot-service-manage-overview?view=azure-bot-service-3.0") -Level Error   
                     }
 	  
                     if ($statuscode -eq 400 ) {
                         if ($_.ErrorDetails.Message.Contains("Application with identifier '$botserviceAppId' was not found in the directory 'botframework.com'")) {
-                            DisplayMessage -Message ("The AppID is invalid!.Please follow this step to create AppId and that should help fix the issue.Login to Portal - Azure Active Directory- App Registrations (preview)- New Registration.Please makes sure to select the second option 'Accounts in any organizational directory'. The reason is the appId must be available for botframework.com directory.") -Level Error   
+                            DisplayMessage -Message ("The AppID is invalid!.Please follow this step to create AppId and that should help fix the issue.Login to Portal -> Azure Active Directory-> App Registrations (preview)-> New Registration.Please makes sure to select the second option 'Accounts in any organizational directory'. The reason is appId must be available for botframework.com directory.") -Level Error   
                         }
                     }
 
@@ -524,7 +524,7 @@ Function TroubleshootBotWebChatConnectivity {
             }
             else {
                 #customer needs to sync App Id between the Messaging End Point and Bot Service
-                DisplayMessage -Message "Your bot might fail with 401 Authentication error as the AppId between Bot Service and your Web end point do not match. Please refer https://docs.microsoft.com/en-us/azure/bot-service/bot-service-manage-overview?view=azure-bot-service-3.0" -Level Error
+                DisplayMessage -Message "Your Bot might fail with 401 authentication error as the AppId between Bot Service and your Web end point do not match. Please refer https://docs.microsoft.com/en-us/azure/bot-service/bot-service-manage-overview?view=azure-bot-service-3.0" -Level Error
 
             }
         }
@@ -535,23 +535,23 @@ Function TroubleshootBotWebChatConnectivity {
     #region Generate Output Report
 
     if ($hostedonazure -ne "true") {
-        DisplayMessage -Message("The bot endpoint may not be hosted on azure, please review the article https://docs.microsoft.com/en-us/azure/bot-service/bot-service-resources-bot-framework-faq?view=azure-bot-service-3.0#which-specific-urls-do-i-need-to-whitelist-in-my-corporate-firewall-to-access-bot-framework-services") -Level Warning
+        DisplayMessage -Message("The Bot Endpoint may not be hosted on Azure, please review the article https://docs.microsoft.com/en-us/azure/bot-service/bot-service-resources-bot-framework-faq?view=azure-bot-service-3.0#which-specific-urls-do-i-need-to-whitelist-in-my-corporate-firewall-to-access-bot-framework-services") -Level Warning
     }
-    DisplayMessage -Message ("This troubleshooter script finished executing.If there are any errors reported above, please fix them and re run this script to validate other scenarios.") -Level Info
+    DisplayMessage -Message ("The troubleshooter script completed.If there are any errors reported above, please fix them and re-run this script to validate other scenarios.") -Level Info
     #endregion Generate Output Report
 }
 
 DisplayMessage -Message ("Please select the scenario you are troubleshooting") -Level Input
-DisplayMessage -Message ("1. Type 1 if you are have issues creating BotService") -Level Input
-DisplayMessage -Message ("2. Type 2 if you are have issues with Webchat Connectivity") -Level Input
+DisplayMessage -Message ("1. Type 1 if you are having issues creating BotService") -Level Input
+DisplayMessage -Message ("2. Type 2 if you are having issues with Webchat Connectivity") -Level Input
 $scenario = Read-Host -Prompt 'Enter the Scenario ( 1 or 2)'
  
 if ($scenario -eq "2") {
 
-    $botServiceName =	Read-Host -Prompt 'Please provide the bot service name'
+    $botServiceName =	Read-Host -Prompt 'Please provide the Bot Service Name'
 	
     if ($botServiceName -eq "") {
-        DisplayMessage -Message ("Bot service name cannot be null, exiting") -Level Error
+        DisplayMessage -Message ("Bot Service name cannot be null, exiting") -Level Error
         return
     }
     Else {
