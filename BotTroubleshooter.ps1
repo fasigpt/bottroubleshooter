@@ -54,7 +54,6 @@ Function DisplayMessage {
     }
 }
 
-
 #Function to make get/post REST Calls
 Function ARMCall {
     Param(
@@ -75,11 +74,8 @@ Function ARMCall {
 
     $json = Invoke-RestMethod -Uri $URI  -Method $Verb -Headers $headers1 
 
-    return $json | ConvertTo-Json -Depth 10
-  
+    return $json | ConvertTo-Json -Depth 10  
 }
-
-
 
 function Get-UriSchemeAndAuthority {
     param(
@@ -160,11 +156,9 @@ $username = $authenticationResult.UserInfo.DisplayableId
 $bearerToken = $authenticationResult.AccessToken
 
 if ($bearerToken -eq $null) {
-
     DisplayMessage -Message ("Login failed or you do not have access to subscription : " + $subscriptionId) -Level Error
     return
-
-}
+   }
 else {
     DisplayMessage -Message ("User $username Logged in") -Level Info
 }
@@ -198,8 +192,7 @@ Function TroubleshootBotCreationPermissionIssues {
             $roledefinitionjson = ARMCall -URI "https://management.azure.com/$temp" -bearerToken $bearerToken -Verb "get"
             $roledefinition = $roledefinitionjson | ConvertFrom-Json			          
             $actions += $roledefinition.properties.permissions.actions
-            $notactions += $roledefinition.properties.permissions.notactions
-			
+            $notactions += $roledefinition.properties.permissions.notactions			
         }
     }
 
@@ -337,11 +330,10 @@ Function TroubleshootBotWebChatConnectivity {
     #Convert Json String to PSObject
     $botservicesundersubid = $botservicesundersubidJSON | ConvertFrom-Json 
     $botservicesundersubid.value.GetEnumerator() | foreach {  
-        If ($_.id.endswith("/Microsoft.BotService/botServices/$botServiceName")) {	 
+        If ($_.id.endswith("/Microsoft.BotService/botServices/$botServiceName")) {
 
             $botserviceUri = $_.id + "/?api-version=2017-12-01"
-            $botserviceAppId = $_.properties.msaAppId
-     
+            $botserviceAppId = $_.properties.msaAppId     
         }		
     }
 
@@ -377,7 +369,6 @@ Function TroubleshootBotWebChatConnectivity {
         catch { }
 
         if ($nslookupname.contains("azurewebsites.net")) {
-
             $hostedonazure = "true"
             $webappname = $nslookupname.split('.')[0]
         }
@@ -441,14 +432,13 @@ Function TroubleshootBotWebChatConnectivity {
         }
     }
 
-
-    switch ($statuscode) {
- 
+    switch ($statuscode) { 
+    
         502 {
             $errorstatus = "true"
             $Message = "Name resolution of the messaging endpoint ($botserviceendpoint) failed ( DNS resolution Failed). Please validate the messaging endpoint and re configure it."
         }
-
+	
         405 {
             $errorstatus = "false"
             $Message = "The messaging endpoint ($botserviceendpoint) seems to be valid"
@@ -477,14 +467,11 @@ Function TroubleshootBotWebChatConnectivity {
         500 {
             $errorstatus = "true"
             $Message = "The messaging endpoint ($botserviceendpoint) seems to be failing with exception. Please review the exception call stack"
-        }
- 
+        } 
     }
 
-
     #endregion Now the actual checks for Different Error Codes while calling Messaging endpoint
-
-
+    
     #region Now validate the APPID and Password Between the endpoint and Bot Service
 
     if ($errorstatus -eq "true") {
@@ -492,7 +479,7 @@ Function TroubleshootBotWebChatConnectivity {
         DisplayMessage -Message $Message -Level Error
     }
     else {
-        if ( $hostedonazure -eq "true") {	 
+        if ($hostedonazure -eq "true") {	 
 
             DisplayMessage -Message "Validating AppID and Password Mismatch between Bot Service and the Bot Endpoint" -Level Info
             #if no Errors found then validate AppID and Password
